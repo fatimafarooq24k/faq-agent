@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # range 0 (identical) to 2 (opposite). Tune this empirically
     # by logging real scores for known-good questions.
     top_k: int = 5
-    retrieval_threshold: float = 0.65
+    retrieval_threshold: float = 0.90
 
     # ---------------------------------------------------------
     # Reranking configuration

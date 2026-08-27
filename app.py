@@ -71,6 +71,24 @@ body,
     font-family: "Inter", sans-serif;
 }
 
+/*
+   Force a readable default text color everywhere.
+
+   Streamlit Community Cloud can auto-switch to a dark theme
+   based on the visitor's browser/OS setting. Without this,
+   default text (anything not explicitly colored below)
+   inherits white-on-white-ish behavior against our cream
+   background whenever a visitor has dark mode on.
+*/
+
+.stApp,
+.stApp p,
+.stApp span,
+.stApp div,
+.stMarkdown {
+    color: #263832;
+}
+
 .stApp {
     background:
         radial-gradient(
