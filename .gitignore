@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+venv/
+
+# Environment variables and secrets
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Generated vector database
+chroma_db/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE / OS files
+.vscode/
+.DS_Store
+Thumbs.db
