@@ -4,11 +4,6 @@ from groq import Groq
 
 from config import settings
 
-
-# =========================================================
-# EMBEDDINGS
-# =========================================================
-
 # =========================================================
 # EMBEDDINGS
 # =========================================================
@@ -50,12 +45,6 @@ def load_vectorstore():
 # =========================================================
 
 def retrieve_documents(question):
-    """
-    Retrieve relevant chunks from the knowledge base.
-
-    Uses similarity scores so weak matches can be filtered
-    using the configured retrieval threshold.
-    """
 
     if not question or not question.strip():
         return []
@@ -67,21 +56,32 @@ def retrieve_documents(question):
         k=settings.top_k,
     )
 
+    print("=" * 60)
+    print("QUESTION:", question)
+    print("RAW RESULTS:", len(results))
+
+    for document, score in results:
+        print(
+            "SOURCE:",
+            document.metadata.get("source"),
+            "| SCORE:",
+            float(score),
+        )
+
     documents = []
 
     for document, score in results:
-
-        # Chroma distance:
-        # lower = more similar
-        # higher = less similar
 
         document.metadata["retrieval_score"] = float(score)
 
         if score <= settings.retrieval_threshold:
             documents.append(document)
 
-    return documents
+    print("THRESHOLD:", settings.retrieval_threshold)
+    print("RESULTS AFTER THRESHOLD:", len(documents))
+    print("=" * 60)
 
+    return documents
 
 # =========================================================
 # OPTIONAL RERANKING
