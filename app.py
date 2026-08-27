@@ -1,10 +1,24 @@
 import streamlit as st
 import time
 import html
+from pathlib import Path
 
 from rag_pipeline import answer_question
+from ingest import main as ingest_knowledge_base
 
 
+@st.cache_resource
+def initialize_knowledge_base():
+
+    chroma_dir = Path("chroma_db")
+
+    if not chroma_dir.exists() or not any(chroma_dir.iterdir()):
+        ingest_knowledge_base()
+
+    return True
+
+
+initialize_knowledge_base()
 # ============================================================
 # CONFIG
 # ============================================================
