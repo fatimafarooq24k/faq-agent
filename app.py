@@ -1,24 +1,11 @@
-import streamlit as st
-import time
 import html
-from pathlib import Path
+import logging
 
-from rag_pipeline import answer_question
-from ingest import main as ingest_knowledge_base
+import streamlit as st
 
+from ingest import ensure_index
+from rag_pipeline import reset_caches, stream_answer
 
-@st.cache_resource
-def initialize_knowledge_base():
-
-    chroma_dir = Path("chroma_db")
-
-    if not chroma_dir.exists() or not any(chroma_dir.iterdir()):
-        ingest_knowledge_base()
-
-    return True
-
-
-initialize_knowledge_base()
 # ============================================================
 # CONFIG
 # ============================================================
@@ -56,12 +43,52 @@ SUGGESTED_QUESTIONS = [
 # PAGE CONFIG
 # ============================================================
 
+# MUST be the first Streamlit call in the script. It previously ran after
+# initialize_knowledge_base(), whose cache spinner emits an element, which
+# made Streamlit raise on a cold start - exactly the first load after a
+# deploy.
+
 st.set_page_config(
     page_title=ASSISTANT_NAME,
     page_icon=ICON,
     layout="centered",
     initial_sidebar_state="collapsed",
 )
+
+
+# ============================================================
+# KNOWLEDGE BASE
+# ============================================================
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s %(name)s: %(message)s",
+)
+
+logger = logging.getLogger(__name__)
+
+
+@st.cache_resource(show_spinner="Preparing the knowledge base...")
+def initialize_knowledge_base():
+    """
+    Make sure the vector store exists, is populated, and matches the
+    current documents and settings.
+
+    ensure_index() inspects the collection itself rather than just checking
+    that a directory exists, so a stale, empty, or wrong-metric index is
+    rebuilt instead of silently returning no results for every question.
+    """
+
+    rebuilt = ensure_index()
+
+    if rebuilt:
+        # The cached handles in rag_pipeline point at the old collection.
+        reset_caches()
+
+    return True
+
+
+initialize_knowledge_base()
 
 
 # ============================================================
@@ -1120,8 +1147,12 @@ if question:
 
 
             # ------------------------------------------------
-            # RUN RAG PIPELINE
+            # RUN RAG PIPELINE AND STREAM THE ANSWER
             # ------------------------------------------------
+
+            # stream_answer() resolves the sources before generation
+            # starts, so citations can be rendered even though the answer
+            # arrives incrementally.
 
             try:
 
@@ -1129,22 +1160,22 @@ if question:
                     st.session_state.messages[:-1]
                 )
 
-                result = answer_question(
-                    question=question,
+                sources, fragments = stream_answer(
+                    question,
                     conversation_history=history,
                 )
 
-                answer = result.get(
-                    "answer",
-                    "I'm sorry, I couldn't generate an answer.",
-                )
+                typing_placeholder.empty()
 
-                sources = result.get(
-                    "sources",
-                    [],
-                )
+                # Real token streaming from Groq. This replaces a
+                # word-by-word time.sleep() loop that only started after the
+                # full answer had already been generated - it made the app
+                # feel slower, not faster, and blocked the script thread.
+                answer = st.write_stream(fragments)
 
-            except Exception as error:
+            except Exception:
+
+                typing_placeholder.empty()
 
                 answer = (
                     "I'm sorry, something went wrong "
@@ -1154,41 +1185,12 @@ if question:
 
                 sources = []
 
-                print(
-                    f"RAG pipeline error: {error}"
-                )
+                st.markdown(answer)
 
-
-            # ------------------------------------------------
-            # REMOVE TYPING INDICATOR
-            # ------------------------------------------------
-
-            typing_placeholder.empty()
-
-
-            # ------------------------------------------------
-            # SMOOTH RESPONSE REVEAL
-            # ------------------------------------------------
-
-            reveal_placeholder = st.empty()
-
-            words = answer.split()
-
-            displayed = ""
-
-            for index, word in enumerate(words):
-
-                displayed += word
-
-                if index < len(words) - 1:
-
-                    displayed += " "
-
-                reveal_placeholder.markdown(
-                    displayed
-                )
-
-                time.sleep(0.012)
+                # Full traceback goes to the server log. print() lost the
+                # stack trace, which made deploy-time failures very hard to
+                # diagnose.
+                logger.exception("RAG pipeline error")
 
 
             # ------------------------------------------------
