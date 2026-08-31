@@ -1,10 +1,34 @@
-langchain
-langchain-community
-langchain-text-splitters
-sentence-transformers
-langchain-chroma
-langchain-huggingface
-groq
-streamlit
-python-dotenv
-pytest
+# Runtime and test dependencies, pinned.
+#
+# Pinned because the previous unpinned list meant every CI run resolved
+# whatever was newest that day. A breaking release in any of these - the
+# LangChain packages release often - turned a green build red with no change
+# to this repository.
+#
+# Removed: langchain and langchain-community. Nothing imports them any more;
+# ingest.py loads Markdown with pathlib instead of DirectoryLoader. They pull
+# in a large dependency tree for no benefit.
+#
+# Added: pydantic-settings (config.py), chromadb (ingest.py uses
+# PersistentClient directly) and langchain-core (Document).
+
+# --- Vector store and embeddings ---
+chromadb==1.5.9
+langchain-chroma==1.1.0
+langchain-core==1.6.0
+langchain-huggingface==1.2.2
+langchain-text-splitters==1.1.2
+sentence-transformers==6.0.0
+
+# --- LLM ---
+groq==1.7.0
+
+# --- Web UI ---
+streamlit==1.62.0
+
+# --- Configuration ---
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+
+# --- Tests ---
+pytest==9.1.1
