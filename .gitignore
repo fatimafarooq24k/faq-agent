@@ -4,14 +4,7 @@ venv/
 
 # Environment variables and secrets
 .env
-
-# Generated vector store.
-# This was previously committed, which is the second half of the "no data for
-# every question" bug: a stale index built with different settings shipped
-# with the repo, and the old readiness check ("does the directory exist?")
-# happily accepted it and never rebuilt.
-# After adding this line, untrack the existing copy:
-#     git rm -r --cached chroma_db
+   
 chroma_db/
 
 # Python cache

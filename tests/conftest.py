@@ -1,20 +1,3 @@
-"""
-Shared test fixtures.
-
-Two things were previously left to luck:
-
-1. Whether a usable vector store existed. Tests called retrieve_documents()
-   and asserted that documents came back, so on a fresh checkout (or in CI,
-   where chroma_db/ should not be committed) every retrieval test failed
-   with a confusing RuntimeError instead of a clear message.
-
-2. Whether GROQ_API_KEY was set. Tests that hit the live API failed on fork
-   pull requests, where GitHub does not expose secrets.
-
-The session fixture below builds the index once, and the marker-based skip
-turns "missing API key" into a skip rather than a failure.
-"""
-
 import os
 
 import pytest

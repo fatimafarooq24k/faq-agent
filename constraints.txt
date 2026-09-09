@@ -1,22 +1,5 @@
-# Transitive dependency pins (pip constraints file). UTF-8.
-#
-# Replaces requirements-lock.txt, which was saved as UTF-16LE with a BOM by
-# PowerShell's `>` redirect and could not be parsed by pip at all. Delete it:
-#
-#     git rm requirements-lock.txt
-#
-# Why a constraints file rather than a lock file:
-#
 #   pip install -r requirements.txt -c constraints.txt
-#
-# A constraints file pins the version of anything that gets installed, but
-# does not itself install anything. So it stays valid now that langchain and
-# langchain-community have been dropped from requirements.txt - the pins for
-# packages that are no longer pulled in are simply ignored, instead of
-# reinstalling a dependency tree the project no longer uses.
-#
-# Regenerate on Windows without corrupting the encoding:
-#     pip freeze | Out-File -Encoding utf8 constraints.txt
+#    pip freeze | Out-File -Encoding utf8 constraints.txt
 
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.3
