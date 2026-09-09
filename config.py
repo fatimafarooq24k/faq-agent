@@ -6,9 +6,9 @@ When deployed on Streamlit Cloud, GROQ_API_KEY can also be loaded
 from Streamlit Secrets.
 """
 
+import os
 from pathlib import Path
 
-from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,10 +29,11 @@ def get_streamlit_secret() -> str:
         return ""
 
 
-class Settings:
+class Settings(BaseSettings):
     # ---------------------------------------------------------
     # Project paths
     # ---------------------------------------------------------
+
     base_dir: Path = Path(__file__).resolve().parent
 
     business_docs_dir: Path = Path("data/business_docs")
@@ -45,19 +46,27 @@ class Settings:
     # The collection name and distance space are configured in
     # ONE place. ingest.py creates the collection with this
     # space and rag_pipeline.py asserts it on load.
+
     collection_name: str = "smilecare_knowledge_base"
+
     distance_space: str = "cosine"
 
     # ---------------------------------------------------------
     # Embedding configuration
     # ---------------------------------------------------------
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+
+    embedding_model: str = (
+        "sentence-transformers/all-MiniLM-L6-v2"
+    )
 
     # ---------------------------------------------------------
     # Chunking configuration
     # ---------------------------------------------------------
+
     # 900/120 keeps the opening-hours markdown table intact.
+
     chunk_size: int = 900
+
     chunk_overlap: int = 120
 
     # ---------------------------------------------------------
@@ -71,185 +80,103 @@ class Settings:
     # 2 = opposite
     #
     # relevance = 1 - distance
+
     retrieval_threshold: float = 0.70
 
     top_k: int = 5
 
     # Secondary filter: once the best match is known, drop
     # chunks that are much worse than it.
+
     relative_margin: float = 0.20
 
     # ---------------------------------------------------------
     # Reranking configuration
     # ---------------------------------------------------------
+
     enable_reranking: bool = False
+
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
+
     rerank_top_k: int = 3
 
     # ---------------------------------------------------------
     # Conversation configuration
     # ---------------------------------------------------------
+
     max_history_messages: int = 15
 
     # ---------------------------------------------------------
     # LLM configuration
     # ---------------------------------------------------------
+
     groq_api_key: str = ""
 
     groq_model: str = "openai/gpt-oss-120b"
 
     temperature: float = 0.2
+
     max_tokens: int = 1024
 
     # ---------------------------------------------------------
     # Logging
     # ---------------------------------------------------------
+
     log_level: str = "INFO"
 
     # ---------------------------------------------------------
     # Environment configuration
     # ---------------------------------------------------------
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        case_sensitive=False,
     )
 
     # ---------------------------------------------------------
     # Initialization
     # ---------------------------------------------------------
-    def __init__(self):
+
+    def __init__(self, **kwargs):
         """
         Load configuration in the following order:
 
-        1. Environment variable
-        2. .env file
-        3. Streamlit Secrets for GROQ_API_KEY
-        4. Default values
+        1. Explicit constructor values
+        2. Environment variables
+        3. .env file
+        4. Streamlit Secrets for GROQ_API_KEY
+        5. Default values
         """
 
-        # -----------------------------------------------------
-        # Groq API key
-        # -----------------------------------------------------
-        #
-        # First check normal environment variables.
-        # This works for local development and other deployments.
-        #
-        import os
+        # Pydantic loads:
+        # - environment variables
+        # - .env
+        # - default values
 
-        self.groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
+        super().__init__(**kwargs)
 
         # -----------------------------------------------------
-        # Streamlit Cloud fallback
+        # Streamlit Cloud fallback for Groq API key
         # -----------------------------------------------------
         #
-        # If the environment variable is empty, check
-        # Streamlit Secrets.
-        #
-        if not self.groq_api_key:
+        # If GROQ_API_KEY was not found through the normal
+        # environment/.env mechanism, try Streamlit Secrets.
+
+        if not self.groq_api_key.strip():
             self.groq_api_key = get_streamlit_secret().strip()
-
-        # -----------------------------------------------------
-        # Other environment overrides
-        # -----------------------------------------------------
-        self.base_dir = Path(__file__).resolve().parent
-
-        self.business_docs_dir = Path(
-            os.getenv(
-                "BUSINESS_DOCS_DIR",
-                "data/business_docs"
-            )
-        )
-
-        self.chroma_db_dir = Path(
-            os.getenv(
-                "CHROMA_DB_DIR",
-                "chroma_db"
-            )
-        )
-
-        self.collection_name = os.getenv(
-            "COLLECTION_NAME",
-            "smilecare_knowledge_base"
-        )
-
-        self.distance_space = os.getenv(
-            "DISTANCE_SPACE",
-            "cosine"
-        )
-
-        self.embedding_model = os.getenv(
-            "EMBEDDING_MODEL",
-            "sentence-transformers/all-MiniLM-L6-v2"
-        )
-
-        self.chunk_size = int(
-            os.getenv("CHUNK_SIZE", "900")
-        )
-
-        self.chunk_overlap = int(
-            os.getenv("CHUNK_OVERLAP", "120")
-        )
-
-        self.top_k = int(
-            os.getenv("TOP_K", "5")
-        )
-
-        self.retrieval_threshold = float(
-            os.getenv("RETRIEVAL_THRESHOLD", "0.70")
-        )
-
-        self.relative_margin = float(
-            os.getenv("RELATIVE_MARGIN", "0.20")
-        )
-
-        self.enable_reranking = (
-            os.getenv(
-                "ENABLE_RERANKING",
-                "false"
-            ).lower()
-            in ("true", "1", "yes")
-        )
-
-        self.reranker_model = os.getenv(
-            "RERANKER_MODEL",
-            "BAAI/bge-reranker-v2-m3"
-        )
-
-        self.rerank_top_k = int(
-            os.getenv("RERANK_TOP_K", "3")
-        )
-
-        self.max_history_messages = int(
-            os.getenv("MAX_HISTORY_MESSAGES", "15")
-        )
-
-        self.groq_model = os.getenv(
-            "GROQ_MODEL",
-            "openai/gpt-oss-120b"
-        )
-
-        self.temperature = float(
-            os.getenv("TEMPERATURE", "0.2")
-        )
-
-        self.max_tokens = int(
-            os.getenv("MAX_TOKENS", "1024")
-        )
-
-        self.log_level = os.getenv(
-            "LOG_LEVEL",
-            "INFO"
-        )
 
         # -----------------------------------------------------
         # Resolve paths
         # -----------------------------------------------------
+
         self._resolve_paths()
 
     # ---------------------------------------------------------
     # Derived values
     # ---------------------------------------------------------
+
     def _resolve_paths(self) -> None:
         """
         Resolve relative paths against base_dir.
@@ -270,16 +197,22 @@ class Settings:
 
     @property
     def index_meta_path(self) -> Path:
-        """Fingerprint file describing how the current index was built."""
+        """
+        Fingerprint file describing how the current index
+        was built.
+        """
         return self.chroma_db_dir / "index_meta.json"
 
     @property
     def has_groq_api_key(self) -> bool:
-        """Return True when a Groq API key is configured."""
+        """
+        Return True when a Groq API key is configured.
+        """
         return bool(self.groq_api_key.strip())
 
 
 # -------------------------------------------------------------
 # Global settings instance
 # -------------------------------------------------------------
+
 settings = Settings()
